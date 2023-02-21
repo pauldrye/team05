@@ -29,6 +29,7 @@ class Planner
         Planner(Grid & grid);
         std::vector<Index> get(Index idx_start, Index idx_goal);
         std::vector<Position> get(Position pos_start, Position pos_goal);
+        Position closest_goal(Position pos_goal);
 
     private:
         std::vector<Node> nodes; // keeps a record of the cheapest cost of every cell in the grid, as well as their parents

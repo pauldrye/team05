@@ -194,7 +194,7 @@ int main(int argc, char **argv)
             msg_cmd.linear.x = cmd_lin_vel;
             msg_cmd.angular.z = cmd_ang_vel;
             pub_cmd.publish(msg_cmd);
-            // oui
+            
             // verbose
             if (verbose)
             {

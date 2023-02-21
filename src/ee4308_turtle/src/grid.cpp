@@ -181,3 +181,9 @@ void Grid::write_to_msg(nav_msgs::OccupancyGrid &msg_grid_lo, nav_msgs::Occupanc
         msg_grid_lo.data[k] = (((double) grid_log_odds[k]) / log_odds_cap + 1) * 50;
     }
 }
+
+bool Grid::occupied(Index idx)
+{
+    int k = get_key(idx);
+    return (grid_log_odds[k] > log_odds_thresh);
+}
