@@ -200,8 +200,11 @@ int main(int argc, char **argv)
         }
         else if (!is_safe_trajectory(trajectory, grid))
         { // request a new path if path intersects inaccessible areas, or if there is no path
-            // implementation code PAUL SHOULD BE HERE
+            // implementation code PAUL SHOULD BE HERE
             replan = true;
+            // if pos_goal inaccessible, then generate new posgoal with dijkstra
+            if (!grid.get_cell(pos_goal))
+                pos_goal = planner.closest_goal(pos_goal);
         }
 
         // always try to publish the next target so it does not get stuck waiting for a new path.

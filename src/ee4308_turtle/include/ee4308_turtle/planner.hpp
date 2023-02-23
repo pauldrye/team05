@@ -30,7 +30,10 @@ class Planner
         Planner(Grid & grid);
         std::vector<Index> get(Index idx_start, Index idx_goal);
         std::vector<Position> get(Position pos_start, Position pos_goal);
-        // ADDED BY MATEO
+
+        Position closest_goal(Position pos_goal);
+        
+        // ADDED BY MATEO
         std::vector<Position> get_with_theta(Position pos_start, Position pos_goal);
         std::vector<Index> get_with_theta(Index idx_start, Index idx_goal);
 
