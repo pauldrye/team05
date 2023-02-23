@@ -1,4 +1,5 @@
 #include "planner.hpp"
+
 Planner::Node::Node() 
     : g(0), h(0), visited(false), idx(-1, -1), parent(-1, -1) 
     {}
@@ -167,3 +168,140 @@ std::vector<Index> Planner::get(Index idx_start, Index idx_goal)
     return path_idx; // is empty if open list is empty
 }
 
+std::vector<Position> Planner::get_with_theta(Position pos_start, Position pos_goal)
+{
+    std::vector<Index> path_idx = get_with_theta(grid.pos2idx(pos_start), grid.pos2idx(pos_goal));
+    std::vector<Position> path;
+    for (Index & idx : path_idx)
+    {
+        path.push_back(grid.idx2pos(idx));
+    }
+    return path;
+}
+std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
+{
+    std::vector<Index> path_idx; // clear previous path
+
+    // initialise data for all nodes
+    for (Node & node : nodes)
+    {
+        //node.h = dist_oct(node.idx, idx_goal);
+        node.g = 1e5; // a reasonably large number. You can use infinity in clims as well, but clims is not included
+        node.visited = false;
+    }
+
+    // set start node g cost as zero
+    int k = grid.get_key(idx_start);
+    ROS_INFO("idx_start %d %d", idx_start.i, idx_start.j);
+    ROS_INFO("idx_goal %d %d", idx_goal.i, idx_goal.j);
+    Node * node = &(nodes[k]);
+    node->g = 0;
+   
+    // add start nodes to openlist --> we add the neighbour of the start instead of the start
+    for (int dir = 0; dir < 8; ++dir)
+    {   // for each neighbor in the 8 directions
+
+        // get their index
+        Index & idx_nb_relative = NB_LUT[dir];
+        Index idx_nb(
+            node->idx.i + idx_nb_relative.i,
+            node->idx.j + idx_nb_relative.j
+        );
+
+        // check if in map and accessible
+        if (!grid.get_cell(idx_nb))
+        {   // if not, move to next nb
+            continue;
+        }
+
+        int nb_k = grid.get_key(idx_nb);
+        Node & nb_node = nodes[nb_k]; // use reference so changing nb_node changes nodes[k]
+        nb_node.g = dist_euc(idx_nb,idx_start);
+        nb_node.h = dist_euc(idx_goal,idx_nb);
+        nb_node.parent = node->idx;
+        // add to open
+        add_to_open(&nb_node); // & a reference means getting the pointer (address) to the reference's object.
+    }
+
+    // main loop
+    while (!open_list.empty())
+    {
+        // (1) poll node from open
+        node = poll_from_open();
+
+        // (2) check if node was visited, and mark it as visited
+        if (node->visited)
+        {   // if node was already visited ==> cheapest route already found, no point expanding this anymore
+            continue; // go back to start of while loop, after checking if open list is empty
+        }
+        node->visited = true; // mark as visited, so the cheapest route to this node is found
+
+
+        // (3) return path if node is the goal
+        if (node->idx.i == idx_goal.i && node->idx.j == idx_goal.j)
+        {   // reached the goal, return the path
+            ROS_INFO("reach goal");
+
+            path_idx.push_back(node->idx);
+
+            while (node->idx.i != idx_start.i || node->idx.j != idx_start.j)
+            {   // while node is not start, keep finding the parent nodes and add to open list
+                k = grid.get_key(node->parent);
+                node = &(nodes[k]); // node is now the parent
+
+                path_idx.push_back(node->idx);
+            }
+
+            break;
+        }
+
+        // (4) check neighbors and add them if cheaper
+        for (int dir = 0; dir < 8; ++dir)
+        {   // for each neighbor in the 8 directions
+
+            // get their index
+            Index & idx_nb_relative = NB_LUT[dir];
+            Index idx_nb(
+                node->idx.i + idx_nb_relative.i,
+                node->idx.j + idx_nb_relative.j
+            );
+
+            // check if in map and accessible
+            if (!grid.get_cell(idx_nb))
+            {   // if not, move to next nb
+                continue;
+            }
+
+// from here changed by Mateo
+
+            // check if nb_node has LOS to current cell's parent
+            Index idx_parent = node->parent;
+            LOS los;
+            for(Index idx : los.get(idx_nb, node->parent)){
+                if (!grid.get_cell(idx_nb)) idx_parent=node->idx;
+            }
+
+            // get tentative g cost from parent
+            double g_nb = dist_euc(idx_nb,idx_parent)+node->g;
+
+            // compare the cost to any previous costs. If cheaper, mark the node as the parent
+            int nb_k = grid.get_key(idx_nb);
+            Node & nb_node = nodes[nb_k]; // use reference so changing nb_node changes nodes[k]
+            if (nb_node.g > g_nb + 1e-5)
+            {   // previous cost was more expensive, rewrite with current
+                nb_node.g = g_nb;
+                nb_node.h = dist_euc(idx_goal,idx_nb); // can also computed for every node like A*
+                nb_node.parent = idx_parent;
+                // add to open
+                add_to_open(&nb_node); // & a reference means getting the pointer (address) to the reference's object.
+            }
+
+            // toggle is_cardinal
+            //is_cardinal = !is_cardinal;
+        }
+    }
+
+    // clear open list
+    open_list.clear();
+    return path_idx; // is empty if open list is empty
+}

@@ -1,6 +1,6 @@
 export TURTLE_X=-2.0
 export TURTLE_Y=-0.5
-export TURTLE_GOALS="-2.5,-0.49"
+export TURTLE_GOALS="2,-0.5"
 export TURTLE_MIN_X=-8.0
 export TURTLE_MIN_Y=-13.0
 export TURTLE_MAX_X=7.0

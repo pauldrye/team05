@@ -154,7 +154,7 @@ int main(int argc, char **argv)
 
         ROS_INFO("TMOTION: ===== BEGIN =====");
 
-        // declare / initialise other variables
+        // Declare / initialise other variables
         double ang_rbt = 0; // robot always start at zero.
         double lin_vel = 0, ang_vel = 0;
         double prev_time = ros::Time::now().toSec();
@@ -167,7 +167,16 @@ int main(int argc, char **argv)
         double wt_odom = 0;
         double rt = 0;  //turning radius variable
 
+        double imu_lin_vel = 0;
 
+        double prev_ang_rbt = 0;
+        double rad_rbt = 0;
+
+        double error_x = 0;
+        double error_y = 0;
+        double error_position = 0;
+        double error_ang = 0;
+        
         // loop
         while (ros::ok() && nh.param("run", true))
         {
