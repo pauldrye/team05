@@ -103,8 +103,8 @@ int main(int argc, char **argv)
     double dt;
     double prev_time = ros::Time::now().toSec();
 
-    ////////////////// DECLARE VARIABLES HERE //////////////////
-    double err_ang;
+    ////////////////// DECLARE VARIABLES PAUL HERE //////////////////
+    /*double err_ang;
     double prev_err_ang = 0;
     double p_ang = 0;
     double i_ang = 0;
@@ -125,7 +125,18 @@ int main(int argc, char **argv)
     bool t01 = 0;
     double t2 = 0;
     bool rise_time = 0;
-    double max_overshoot = 0;
+    double max_overshoot = 0;*/
+
+  ////////////////// DECLARE VARIABLES MATEO HERE //////////////////
+    double ir=0;
+    double error_r0=0;
+    double error_r, pr, dr;
+    double i_ang=0;
+    double error_angl0=0;
+    double error_angl, p_ang, d_ang;
+    double prev_cmd_lin_vel=0;
+    double prev_cmd_ang_vel=0;
+
 
     ROS_INFO(" TMOVE : ===== BEGIN =====");
 
@@ -168,8 +179,8 @@ int main(int argc, char **argv)
                 continue;
             prev_time += dt;
 
-            ////////////////// MOTION CONTROLLER HERE //////////////////
-            err_ang = limit_angle(atan2(target.y-pos_rbt.y,target.x-pos_rbt.x) - ang_rbt);
+            ////////////////// MOTION CONTROLLER PAUL HERE //////////////////
+            /*err_ang = limit_angle(atan2(target.y-pos_rbt.y,target.x-pos_rbt.x) - ang_rbt);
             p_ang = Kp_ang*err_ang;
             i_ang += Ki_ang*err_ang*dt;
             d_ang = Kd_ang*(err_ang - prev_err_ang)/dt;
@@ -189,7 +200,42 @@ int main(int argc, char **argv)
             
             sat((cmd_ang_vel - prev_cmd_ang_vel)/dt, max_ang_acc);
             sat(prev_cmd_ang_vel + ang_acc*dt, max_ang_vel);
+            prev_cmd_ang_vel = cmd_ang_vel;*/
+
+            ////////////////// MOTION CONTROLLER MATEO HERE //////////////////
+
+            // linear controller
+            error_r = sqrt(pow(target.x-pos_rbt.x,2)+pow(target.y-pos_rbt.y,2));
+            //error_r = target.x-pos_rbt.x;
+            pr = Kp_lin*error_r;
+            ir += Ki_lin*error_r*dt;
+            dr = Kd_lin*((error_r-error_r0)/dt);
+            cmd_lin_vel = pr+ir+dr;
+            error_r0 = error_r;
+            
+            double a = (cmd_lin_vel-prev_cmd_lin_vel)/dt;
+            if(abs(a)>max_lin_acc) a=max_lin_acc;
+            if(abs(prev_cmd_lin_vel+a*dt)>max_lin_vel) cmd_lin_vel=max_lin_vel;
+            prev_cmd_lin_vel = cmd_lin_vel;
+
+            // angular controller
+            error_angl = limit_angle(atan2(target.y-pos_rbt.y,target.x-pos_rbt.x)-ang_rbt);
+            p_ang =  Kp_ang*error_angl;
+            i_ang += Ki_ang*error_angl*dt;
+            d_ang = Kd_ang*((error_angl-error_angl0)/dt);
+            cmd_ang_vel = p_ang+i_ang+d_ang;
+            error_angl0 = error_angl;
+
+            //if(abs(error_angl)>(M_PI/2)) cmd_lin_vel = -cmd_lin_vel;
+
+            double a_ang = (cmd_ang_vel-prev_cmd_ang_vel)/dt;
+            if(abs(a_ang)>max_ang_acc) a=max_ang_acc;
+            if(abs(prev_cmd_ang_vel+a*dt)>max_ang_vel) cmd_ang_vel=max_ang_vel;
             prev_cmd_ang_vel = cmd_ang_vel;
+           
+           cmd_lin_vel = cmd_lin_vel*((M_PI-abs(error_angl))/M_PI);
+
+
             // publish speeds
             msg_cmd.linear.x = cmd_lin_vel;
             msg_cmd.angular.z = cmd_ang_vel;
@@ -199,10 +245,10 @@ int main(int argc, char **argv)
             if (verbose)
             {
                 ROS_INFO(" TMOVE :  FV(%6.3f) AV(%6.3f)", cmd_lin_vel, cmd_ang_vel);
-                ROS_INFO("POS : x(%6.3f), y(%6.3f)", pos_rbt.x, pos_rbt.y);
-                ROS_INFO("ERR_ANG(%6.3f)", err_ang);
+                //ROS_INFO("POS : x(%6.3f), y(%6.3f)", pos_rbt.x, pos_rbt.y);
+                //ROS_INFO("ERR_ANG(%6.3f)", err_ang);
                 ROS_INFO("TARGET : x(%6.3f), y(%6.3f)", target.x, target.y);
-                ROS_INFO("MAX_O : (%6.3f))", max_overshoot);   
+                //ROS_INFO("MAX_O : (%6.3f))", max_overshoot);   
             }
 
             // wait for rate

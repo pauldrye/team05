@@ -231,6 +231,11 @@ int main(int argc, char **argv)
                 // if the robot and goal are both on accessible cells of the grid
                 //path = planner.get(pos_rbt, pos_goal); // original path (with A*)
                 path = planner.get_with_theta(pos_rbt, pos_goal); // path with theta*
+                /*for(int i; i < path.size(); ++i){
+                    Position p;
+                    p = path[i];
+                    ROS_INFO(" TMAIN : path(%f,%f)", p.x, p.y);
+                }*/
                 if (path.empty())
                 { // path cannot be found
                     if (verbose)

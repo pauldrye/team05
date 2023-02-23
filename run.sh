@@ -13,9 +13,9 @@ source devel/setup.bash
 source `rospack find ee4308_bringup`/worlds/`echo $WORLD`.sh
 
 # reset the gazebo
-# echo "Resetting Gazebo. Wait 1s for Gazebo to complete reset."
-# rosservice call /gazebo/reset_simulation
-# sleep 1s # allow gazebo to reset so as not to mess with the time.
+echo "Resetting Gazebo. Wait 1s for Gazebo to complete reset."
+rosservice call /gazebo/reset_simulation
+sleep 1s # allow gazebo to reset so as not to mess with the time.
 # roslaunch code for reset sim. Put here for reference
 #    <node pkg="rosservice" type="rosservice" name="reset_simulation" args="call --wait /gazebo/reset_simulation {}" /> 
 

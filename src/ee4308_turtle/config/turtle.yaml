@@ -20,15 +20,15 @@ motion_iter_rate: 50
 
 # move
 enable_move: true
-verbose_move: true
-Kp_lin: 10
+verbose_move: false
+Kp_lin: 1.0
 Ki_lin: 0.0
-Kd_lin: 5
+Kd_lin: 3.0
 max_lin_vel: 0.22 # max is 0.22
-max_lin_acc: 1 #0.5 in lab1
-Kp_ang: 3
+max_lin_acc: 0.5 #0.5 in lab1
+Kp_ang: 0.1
 Ki_ang: 0.0
-Kd_ang: 2
+Kd_ang: 2.0
 max_ang_vel: 2.84 # max is 2.84
-max_ang_acc: 4 #2 in lab1
+max_ang_acc: 2 #2 in lab1
 move_iter_rate: 25

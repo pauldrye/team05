@@ -180,6 +180,13 @@ std::vector<Position> Planner::get_with_theta(Position pos_start, Position pos_g
 }
 std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
 {
+    LOS los;
+    for(Index idx : los.get(idx_start, idx_goal)){
+        if (!grid.get_cell(idx)){
+            ROS_INFO("obstacle");
+        }
+    }
+
     std::vector<Index> path_idx; // clear previous path
 
     // initialise data for all nodes
@@ -223,9 +230,11 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
         add_to_open(&nb_node); // & a reference means getting the pointer (address) to the reference's object.
     }
 
+    double iter=0;
     // main loop
     while (!open_list.empty())
     {
+        iter+=1;
         // (1) poll node from open
         node = poll_from_open();
 
@@ -240,16 +249,25 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
         // (3) return path if node is the goal
         if (node->idx.i == idx_goal.i && node->idx.j == idx_goal.j)
         {   // reached the goal, return the path
-            ROS_INFO("reach goal");
+            ROS_INFO("path planner reached the goal");
 
             path_idx.push_back(node->idx);
+            Position pos;
+            pos.x = grid.idx2pos(node->idx).x;
+            pos.y = grid.idx2pos(node->idx).y;
+            ROS_INFO("turning point: (%f,%f)",pos.x, pos.y);
 
             while (node->idx.i != idx_start.i || node->idx.j != idx_start.j)
             {   // while node is not start, keep finding the parent nodes and add to open list
                 k = grid.get_key(node->parent);
                 node = &(nodes[k]); // node is now the parent
+                Position pos;
+                pos.x = grid.idx2pos(node->idx).x;
+                pos.y = grid.idx2pos(node->idx).y;
+                ROS_INFO("turning point: (%f,%f)",pos.x, pos.y);
 
-                path_idx.push_back(node->idx);
+                //path_idx.push_back(node->idx);
+                //ROS_INFO("path turning points: (%d,%d)",node->idx.i,node->idx.j);
             }
 
             break;
@@ -278,7 +296,10 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
             Index idx_parent = node->parent;
             LOS los;
             for(Index idx : los.get(idx_nb, node->parent)){
-                if (!grid.get_cell(idx_nb)) idx_parent=node->idx;
+                if (!grid.get_cell(idx)){
+                    idx_parent=node->idx;
+                    ROS_INFO("in if");
+                }
             }
 
             // get tentative g cost from parent
@@ -301,6 +322,7 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
         }
     }
 
+    ROS_INFO("number of iter: %f",iter);
     // clear open list
     open_list.clear();
     return path_idx; // is empty if open list is empty
