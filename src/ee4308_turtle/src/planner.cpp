@@ -278,7 +278,7 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
             Index idx_parent = node->parent;
             LOS los;
             for(Index idx : los.get(idx_nb, node->parent)){
-                if (!grid.get_cell(idx_nb)) idx_parent=node->idx;
+                if (!grid.get_cell(idx)) idx_parent=node->idx;
             }
 
             // get tentative g cost from parent

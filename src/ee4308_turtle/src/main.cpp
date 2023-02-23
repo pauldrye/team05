@@ -229,8 +229,8 @@ int main(int argc, char **argv)
                     ROS_INFO(" TMAIN : Request Path from [%.2f, %.2f] to Goal %d at [%.2f,%.2f]",
                              pos_rbt.x, pos_rbt.y, g, pos_goal.x, pos_goal.y);
                 // if the robot and goal are both on accessible cells of the grid
-                path = planner.get(pos_rbt, pos_goal); // original path (with A*)
-                //path = planner.get_with_theta(pos_rbt, pos_goal); // path with theta*
+                //path = planner.get(pos_rbt, pos_goal); // original path (with A*)
+                path = planner.get_with_theta(pos_rbt, pos_goal); // path with theta*
                 if (path.empty())
                 { // path cannot be found
                     if (verbose)
