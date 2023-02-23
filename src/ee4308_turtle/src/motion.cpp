@@ -95,9 +95,9 @@ int main(int argc, char **argv)
                 double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
                 double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
 
-                ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)  FVel(%6.3f)  AVel(%6.3f)",
+                /*ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)  FVel(%6.3f)  AVel(%6.3f)",
                          pose_rbt.pose.position.x, pose_rbt.pose.position.y, atan2(siny_cosp, cosy_cosp),
-                         msg_odom.twist.twist.linear.x, msg_odom.twist.twist.angular.z);
+                         msg_odom.twist.twist.linear.x, msg_odom.twist.twist.angular.z);*/
             }
 
             rate.sleep();
@@ -160,12 +160,12 @@ int main(int argc, char **argv)
         double prev_time = ros::Time::now().toSec();
         double dt = 0;
         ////////////////// DECLARE VARIABLES HERE //////////////////
-        double prev_wheel_r = 0;
-        double prev_wheel_l = 0;
-        double delta_wheel_r = 0;
-        double delta_wheel_l = 0;
-        double odom_lin_vel = 0;
-        double odom_ang_vel = 0;
+        double wheel_r_previous = wheel_r;
+        double wheel_l_previous = wheel_l;
+        double ang_rbt_previous = 0;
+        double vt_odom = 0;
+        double wt_odom = 0;
+        double rt = 0;  //turning radius variable
 
         double imu_lin_vel = 0;
 
@@ -189,31 +189,32 @@ int main(int argc, char **argv)
             prev_time += dt;
 
             ////////////////// MOTION FILTER HERE //////////////////
-            delta_wheel_r = wheel_r - prev_wheel_r;
-            delta_wheel_l = wheel_l - prev_wheel_l;
-            odom_lin_vel = (wheel_radius/(2*dt))*(delta_wheel_r + delta_wheel_l);
-            odom_ang_vel = (wheel_radius/(dt*axle_track))*(delta_wheel_r - delta_wheel_l);
-            prev_wheel_r = wheel_r;
-            prev_wheel_l = wheel_l;
+            double delta_wheel_r = wheel_r - wheel_r_previous;
+            double delta_wheel_l = wheel_l - wheel_l_previous;
+            vt_odom = (wheel_radius/(2*dt))*(delta_wheel_l + delta_wheel_r);
+            wt_odom = (wheel_radius/(axle_track*dt))*(delta_wheel_r - delta_wheel_l);
 
-            imu_lin_vel = lin_vel + imu_lin_acc*dt;
-            lin_vel = weight_odom_v*odom_lin_vel + weight_imu_v*imu_lin_vel;
-            ang_vel = weight_odom_w*odom_ang_vel + weight_imu_w*imu_ang_vel;
+            wheel_r_previous = wheel_r;
+            wheel_l_previous = wheel_l;
+            double imu_lin_vel = lin_vel + imu_lin_acc*dt;
 
-            prev_ang_rbt = ang_rbt;
-            ang_rbt += ang_vel*dt;
-            rad_rbt = lin_vel/ang_vel;
+            lin_vel = weight_odom_v*vt_odom + weight_imu_v*imu_lin_vel;
+            ang_vel = weight_odom_w*wt_odom + weight_imu_w*imu_ang_vel;
 
-            if (abs(ang_vel) > straight_thresh)
-            {
-                pos_rbt.x += rad_rbt*(sin(ang_rbt)-sin(prev_ang_rbt));
-                pos_rbt.y += rad_rbt*(cos(prev_ang_rbt)-cos(ang_rbt));
+            rt = lin_vel/ang_vel;
+            ang_rbt_previous = ang_rbt;
+            ang_rbt = ang_rbt + ang_vel*dt;
+            
+
+            if (abs(ang_vel) > straight_thresh){
+                pos_rbt.x += rt*(sin(ang_rbt)-sin(ang_rbt_previous));
+                pos_rbt.y += rt*(cos(ang_rbt_previous)-cos(ang_rbt));
             }
-            else 
-            {
-                pos_rbt.x += lin_vel*dt*cos(prev_ang_rbt);
-                pos_rbt.x += lin_vel*dt*sin(prev_ang_rbt);
+            else {
+                pos_rbt.x += lin_vel*dt*cos(ang_rbt_previous);
+                pos_rbt.x += lin_vel*dt*sin(ang_rbt_previous);
             }
+
 
             // publish the pose
             // inject position and calculate quaternion for pose message, and publish
@@ -223,23 +224,28 @@ int main(int argc, char **argv)
             pose_rbt.pose.orientation.z = sin(ang_rbt / 2);
             pub_pose.publish(pose_rbt);
 
+            
+            // get ang_rbt from quaternion
             auto &q = msg_odom.pose.pose.orientation;
             double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
             double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-            error_x = msg_odom.pose.pose.position.x - pos_rbt.x;
-            error_y = msg_odom.pose.pose.position.y - pos_rbt.y;
-            error_position = sqrt(error_x*error_x+error_y*error_y);
-            error_ang = limit_angle(atan2(siny_cosp, cosy_cosp) - ang_rbt);
-
+            
+            double error_x = msg_odom.pose.pose.position.x - pos_rbt.x; //Calculating errors
+            double error_y = msg_odom.pose.pose.position.y - pos_rbt.y;
+            double error_pos = sqrt(error_x * error_x + error_y * error_y);
+            double error_ang = limit_angle(atan2(siny_cosp, cosy_cosp) - ang_rbt);
 
             if (verbose)
             {
-                ROS_INFO("TMOTION: ODOM Pos(%7.3f, %7.3f)  Ang(%6.3f)",
+                /*ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)", //motion filtered positions
                          pos_rbt.x, pos_rbt.y, ang_rbt);
-                ROS_INFO("TMOTION: MSG Pos(%7.3f, %7.3f)  Ang(%6.3f)",
+                
+                ROS_INFO("TMOTION: Internal Odom Pos(%7.3f, %7.3f)  Ang(%6.3f)",  //Print internal odom stuff
                          msg_odom.pose.pose.position.x, msg_odom.pose.pose.position.y, atan2(siny_cosp, cosy_cosp));
-                ROS_INFO("TMOTION: ERR Pos(%7.3f)  Ang(%6.3f)",
-                     error_position, error_ang);
+                
+                ROS_INFO("TMOTION: Error Pos(%7.3f)  Ang(%6.3f)",  //print errors between internal positions and motion filter positions
+                         error_pos, error_ang);*/
+
             }
 
             // sleep until the end of the required frequency

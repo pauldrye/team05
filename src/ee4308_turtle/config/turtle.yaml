@@ -1,6 +1,6 @@
 # main
-close_enough: 0.1 #should be 0.1
-target_dt: 0.04 # 0.04 this (s) should be slower than or equals to main_iter_rate (Hz)
+close_enough: 0.1 #default 0.1
+target_dt: 0.04 # this (s) should be slower than or equals to main_iter_rate (Hz)
 average_speed: 0.2
 cell_size: 0.05
 inflation_radius: 0.22
@@ -13,8 +13,8 @@ verbose_motion: true
 use_internal_odom: true
 axle_track: 0.16
 wheel_radius: 0.033
-weight_odom_v: 0.6
-weight_odom_w: 0.05
+weight_odom_v: 0.5
+weight_odom_w: 0.5
 straight_thresh: 0.05
 motion_iter_rate: 50
 
