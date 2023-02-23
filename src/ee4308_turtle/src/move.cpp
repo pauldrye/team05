@@ -124,6 +124,7 @@ int main(int argc, char **argv)
     double akr_sat; //Saturated acceleration at k.
     double ako;
     double ako_sat;
+    double direction;
 
     ROS_INFO(" TMOVE : ===== BEGIN =====");
 
@@ -142,6 +143,17 @@ int main(int argc, char **argv)
 
             ////////////////// MOTION CONTROLLER HERE //////////////////
             error_ang = limit_angle(atan2(target.y - pos_rbt.y,target.x - pos_rbt.x) - ang_rbt);
+            direction = 1;
+            if (error_ang > M_PI/2)
+            {
+                error_ang = error_ang - M_PI; //turning rbt towards error_ang of Pi
+                direction = -1;
+            }
+            else if (error_ang < -M_PI/2)
+            {
+                error_ang = error_ang + M_PI; //turning rbt towards error_ang of Pi
+                direction = -1;
+            }
             sum_error_ang += error_ang;
             pko = Kp_ang * error_ang;
             iko = Ki_ang * sum_error_ang * dt;
@@ -155,22 +167,7 @@ int main(int argc, char **argv)
             ikr = Ki_lin * sum_error_lin * dt;
             dkr = Kd_lin * (error_lin - prev_error_lin)/dt;
             prev_error_lin = error_lin; //for my own ref, shifted from line 173
-
-            if (error_ang > M_PI/2) //bidirection logic
-            {
-                error_ang = error_ang - M_PI; 
-                cmd_ang_vel = -cmd_ang_vel; // robot needs to rotate clockwise to acheive error_ang = Pi
-                cmd_lin_vel = -cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr); //negative velocity to travel backwards
-            } else if (error_ang < -M_PI/2)
-            {
-                error_ang = error_ang + M_PI; 
-                cmd_ang_vel = -cmd_ang_vel; // robot needs to rotate anti-clockwise to acheive error_ang = Pi
-                cmd_lin_vel = -cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr); //negative velocity to travel backwards
-            } else
-            {
-            cmd_lin_vel = cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr);
-            }
-
+            cmd_lin_vel = direction*cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr);
 
             akr = (cmd_lin_vel - prev_cmd_lin_vel)/dt;
             akr_sat = sat(akr, max_lin_acc);
@@ -191,7 +188,7 @@ int main(int argc, char **argv)
             }*/
 
 
-           
+            //cmd_lin_vel = cmd_lin_vel * ((M_PI-abs(error_ang))/M_PI);
             // publish speeds
             msg_cmd.linear.x = cmd_lin_vel;
             msg_cmd.angular.z = cmd_ang_vel; 

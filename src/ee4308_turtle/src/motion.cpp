@@ -95,9 +95,9 @@ int main(int argc, char **argv)
                 double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
                 double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
 
-                /*ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)  FVel(%6.3f)  AVel(%6.3f)",
+                ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)  FVel(%6.3f)  AVel(%6.3f)",
                          pose_rbt.pose.position.x, pose_rbt.pose.position.y, atan2(siny_cosp, cosy_cosp),
-                         msg_odom.twist.twist.linear.x, msg_odom.twist.twist.angular.z);*/
+                         msg_odom.twist.twist.linear.x, msg_odom.twist.twist.angular.z);
             }
 
             rate.sleep();
@@ -135,7 +135,6 @@ int main(int argc, char **argv)
         // Subscribers
         ros::Subscriber sub_wheels = nh.subscribe("joint_states", 1, &cbWheels);
         ros::Subscriber sub_imu = nh.subscribe("imu", 1, &cbImu);
-        ros::Subscriber sub_odom = nh.subscribe("odom", 1, &cbOdom);
 
         // initialise rate
         ros::Rate rate(motion_iter_rate); // higher rate for better estimation
@@ -154,7 +153,7 @@ int main(int argc, char **argv)
 
         ROS_INFO("TMOTION: ===== BEGIN =====");
 
-        // Declare / initialise other variables
+        // declare / initialise other variables
         double ang_rbt = 0; // robot always start at zero.
         double lin_vel = 0, ang_vel = 0;
         double prev_time = ros::Time::now().toSec();
@@ -167,16 +166,7 @@ int main(int argc, char **argv)
         double wt_odom = 0;
         double rt = 0;  //turning radius variable
 
-        double imu_lin_vel = 0;
 
-        double prev_ang_rbt = 0;
-        double rad_rbt = 0;
-
-        double error_x = 0;
-        double error_y = 0;
-        double error_position = 0;
-        double error_ang = 0;
-        
         // loop
         while (ros::ok() && nh.param("run", true))
         {
@@ -197,7 +187,6 @@ int main(int argc, char **argv)
             wheel_r_previous = wheel_r;
             wheel_l_previous = wheel_l;
             double imu_lin_vel = lin_vel + imu_lin_acc*dt;
-
             lin_vel = weight_odom_v*vt_odom + weight_imu_v*imu_lin_vel;
             ang_vel = weight_odom_w*wt_odom + weight_imu_w*imu_ang_vel;
 
@@ -224,24 +213,24 @@ int main(int argc, char **argv)
             pose_rbt.pose.orientation.z = sin(ang_rbt / 2);
             pub_pose.publish(pose_rbt);
 
-            
             // get ang_rbt from quaternion
-            auto &q = msg_odom.pose.pose.orientation;
+            /*auto &q = msg_odom.pose.pose.orientation;
             double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
             double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
             
             double error_x = msg_odom.pose.pose.position.x - pos_rbt.x; //Calculating errors
             double error_y = msg_odom.pose.pose.position.y - pos_rbt.y;
             double error_pos = sqrt(error_x * error_x + error_y * error_y);
-            double error_ang = limit_angle(atan2(siny_cosp, cosy_cosp) - ang_rbt);
+            double error_ang = atan2(siny_cosp, cosy_cosp) - limit_angle(ang_rbt);*/
 
             if (verbose)
             {
-                /*ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)", //motion filtered positions
+                ROS_INFO("TMOTION: Pos(%7.3f, %7.3f)  Ang(%6.3f)", //motion filtered positions
                          pos_rbt.x, pos_rbt.y, ang_rbt);
                 
-                ROS_INFO("TMOTION: Internal Odom Pos(%7.3f, %7.3f)  Ang(%6.3f)",  //Print internal odom stuff
-                         msg_odom.pose.pose.position.x, msg_odom.pose.pose.position.y, atan2(siny_cosp, cosy_cosp));
+                /*ROS_INFO("TMOTION: Internal Odom Pos(%7.3f, %7.3f)  Ang(%6.3f)  FVel(%6.3f)  AVel(%6.3f)",  //Print internal odom stuff (not necessary tbh)
+                         msg_odom.pose.pose.position.x, msg_odom.pose.pose.position.y, atan2(siny_cosp, cosy_cosp),
+                         msg_odom.twist.twist.linear.x, msg_odom.twist.twist.angular.z);
                 
                 ROS_INFO("TMOTION: Error Pos(%7.3f)  Ang(%6.3f)",  //print errors between internal positions and motion filter positions
                          error_pos, error_ang);*/
