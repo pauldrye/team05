@@ -276,7 +276,7 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
             Index idx_parent = node->parent;
             LOS los;
             for(Index idx : los.get(idx_nb, node->parent)){
-                if (!grid.get_cell(idx_nb)) idx_parent=node->idx;
+                if (!grid.get_cell(idx)) idx_parent=node->idx;
             }
 
             // get tentative g cost from parent
@@ -302,4 +302,83 @@ std::vector<Index> Planner::get_with_theta(Index idx_start, Index idx_goal)
     // clear open list
     open_list.clear();
     return path_idx; // is empty if open list is empty
+}
+
+Position Planner::closest_goal(Position pos_goal)
+{
+    Index idx_goal = grid.pos2idx(pos_goal);
+    for (Node & node : nodes)
+    {
+        node.g = 1e5; // a reasonably large number. You can use infinity in clims as well, but clims is not included
+        node.h = 0;
+    }
+    int k = grid.get_key(idx_goal);
+    Node * node = &(nodes[k]);
+    node->g = 0;
+
+    // add start node to openlist
+    add_to_open(node);
+
+    // main loop
+    while (!open_list.empty())
+    {
+        // (1) poll node from open
+        node = poll_from_open();
+        
+        // check if accessible
+        if (grid.get_cell(node->idx))
+        {   
+            ROS_INFO("new available goal :((%6.3f),(%6.3f))", grid.idx2pos(node->idx).x, grid.idx2pos(node->idx).y );
+            open_list.clear();
+            return grid.idx2pos(node->idx);
+        }
+        
+        // (3) check neighbors and add them if cheaper
+        bool is_cardinal = true;
+        for (int dir = 0; dir < 8; ++dir)
+        {   // for each neighbor in the 8 directions
+            // get their index
+            Index & idx_nb_relative = NB_LUT[dir];
+            Index idx_nb(
+                node->idx.i + idx_nb_relative.i,
+                node->idx.j + idx_nb_relative.j
+            );
+
+            if (grid.out_of_map(idx_nb))
+            {   
+                is_cardinal = !is_cardinal; // not sure but seems like necessary
+                continue; // clear open list ?
+            }
+            
+            // implement penalty for obstacle (== in map but occupied), maybe augment g cost for nodes with parents as
+            // obstacles, try to distinguish obstacles and inflated cells ? 
+
+            // get the cost if accessing from node as parent
+            double g_nb = node->g;
+            if (is_cardinal)
+                g_nb += 1;
+            else
+                g_nb += M_SQRT2;
+            // the above if else can be condensed using ternary statements: g_nb += is_cardinal ? 1 : M_SQRT2;
+
+            // compare the cost to any previous costs. If cheaper, mark the node as the parent
+            int nb_k = grid.get_key(idx_nb);
+            Node & nb_node = nodes[nb_k]; // use reference so changing nb_node changes nodes[k]
+            if (nb_node.g > g_nb + 1e-5)
+            {   // previous cost was more expensive, rewrite with current
+                nb_node.g = g_nb;
+                if (grid.occupied(idx_nb))
+                    nb_node.g += 10;
+                nb_node.parent = node->idx;
+
+                // add to open
+                add_to_open(&nb_node); // & a reference means getting the pointer (address) to the reference's object.
+            }
+
+            // toggle is_cardinal
+            is_cardinal = !is_cardinal;
+        }
+    }
+    open_list.clear();
+    return pos_goal; // if there isn't any available goal
 }
