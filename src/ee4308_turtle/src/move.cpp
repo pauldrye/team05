@@ -168,6 +168,7 @@ int main(int argc, char **argv)
             dkr = Kd_lin * (error_lin - prev_error_lin)/dt;
             prev_error_lin = error_lin; //for my own ref, shifted from line 173
             cmd_lin_vel = direction*cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr);
+            //cmd_lin_vel = direction*cmd_lin_vel * ((M_PI-abs(error_ang))/M_PI);
 
             akr = (cmd_lin_vel - prev_cmd_lin_vel)/dt;
             akr_sat = sat(akr, max_lin_acc);
@@ -187,8 +188,6 @@ int main(int argc, char **argv)
                 prev_cmd_lin_vel = cmd_lin_vel;
             }*/
 
-
-            //cmd_lin_vel = cmd_lin_vel * ((M_PI-abs(error_ang))/M_PI);
             // publish speeds
             msg_cmd.linear.x = cmd_lin_vel;
             msg_cmd.angular.z = cmd_ang_vel; 

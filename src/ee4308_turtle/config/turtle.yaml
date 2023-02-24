@@ -13,15 +13,15 @@ verbose_motion: false
 use_internal_odom: false
 axle_track: 0.16
 wheel_radius: 0.033
-weight_odom_v: 0.6
-weight_odom_w: 0.05
-straight_thresh: 0.05
+weight_odom_v: 0.9
+weight_odom_w: 0.1
+straight_thresh: 0.06
 motion_iter_rate: 50
 
 # move
 enable_move: true
 verbose_move: false
-Kp_lin: 4.0
+Kp_lin: 6.0
 Ki_lin: 0.0
 Kd_lin: 2.5
 max_lin_vel: 0.22 # max is 0.22
