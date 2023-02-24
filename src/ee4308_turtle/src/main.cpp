@@ -200,7 +200,11 @@ int main(int argc, char **argv)
         }
         else if (!is_safe_trajectory(trajectory, grid))
         { // request a new path if path intersects inaccessible areas, or if there is no path
+            // implementation code PAUL SHOULD BE HERE
             replan = true;
+            // if pos_goal inaccessible, then generate new posgoal with dijkstra
+            if (!grid.get_cell(pos_goal))
+                pos_goal = planner.closest_goal(pos_goal);
         }
 
         // always try to publish the next target so it does not get stuck waiting for a new path.
@@ -228,7 +232,8 @@ int main(int argc, char **argv)
                     ROS_INFO(" TMAIN : Request Path from [%.2f, %.2f] to Goal %d at [%.2f,%.2f]",
                              pos_rbt.x, pos_rbt.y, g, pos_goal.x, pos_goal.y);
                 // if the robot and goal are both on accessible cells of the grid
-                path = planner.get(pos_rbt, pos_goal); // original path
+                //path = planner.get(pos_rbt, pos_goal); // original path (with A*)
+                path = planner.get_with_theta(pos_rbt, pos_goal); // path with theta*
                 if (path.empty())
                 { // path cannot be found
                     if (verbose)

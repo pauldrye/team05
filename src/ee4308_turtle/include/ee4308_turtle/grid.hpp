@@ -39,6 +39,8 @@ class Grid
 
         Index pos2idx(Position pos);
         Position idx2pos(Index idx);
+
+        bool occupied(Index idx);
 };
 #endif
 

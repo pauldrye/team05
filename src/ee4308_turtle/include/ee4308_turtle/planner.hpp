@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "grid.hpp"
+#include "los.hpp"
 #include "common.hpp"
 #include <vector>
 #include <deque>
@@ -29,6 +30,12 @@ class Planner
         Planner(Grid & grid);
         std::vector<Index> get(Index idx_start, Index idx_goal);
         std::vector<Position> get(Position pos_start, Position pos_goal);
+
+        Position closest_goal(Position pos_goal);
+        
+        // ADDED BY MATEO
+        std::vector<Position> get_with_theta(Position pos_start, Position pos_goal);
+        std::vector<Index> get_with_theta(Index idx_start, Index idx_goal);
 
     private:
         std::vector<Node> nodes; // keeps a record of the cheapest cost of every cell in the grid, as well as their parents

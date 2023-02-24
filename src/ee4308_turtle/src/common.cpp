@@ -1,6 +1,5 @@
 #include "common.hpp"
 #include <cmath>
-#include <iostream>
 
 Index::Index() : i(0), j(0) {};
 Index::Index(int i, int j) : i(i), j(j) {};
@@ -77,19 +76,18 @@ double limit_angle(double angle)
     return result >= 0 ? result - M_PI : result + M_PI;
 }
 
-double sat(double x, double max) 
+double sat(double x, double x_star)
 {
-  if (x > max) 
-  {
-    return max;
-  } 
-  else if (-x > max)
-  {
-    return -max;
-  } 
-  else 
-  {
-    return x;
-  }
+    if (x > x_star)
+    {
+        return x_star;
+    }
+    else if (x < -x_star)
+    {
+        return -x_star;
+    }
+    else
+    {
+        return x;
+    }
 }
-

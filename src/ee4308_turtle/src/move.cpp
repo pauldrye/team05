@@ -104,28 +104,27 @@ int main(int argc, char **argv)
     double prev_time = ros::Time::now().toSec();
 
     ////////////////// DECLARE VARIABLES HERE //////////////////
-    double err_ang;
-    double prev_err_ang = 0;
-    double p_ang = 0;
-    double i_ang = 0;
-    double d_ang = 0;
+    double error_lin = dist_euc(target.y, pos_rbt.y, target.x, pos_rbt.x); //initial positional error
+    double sum_error_lin = 0;
+    double prev_error_lin = error_lin;
+    double pkr = 0; //proportion component, positional
+    double ikr = 0; //integral component, positional
+    double dkr = 0; //differential component, positional
 
-    double err_lin;
-    double prev_err_lin = 0;
-    double p_lin = 0;
-    double i_lin = 0;
-    double d_lin = 0;
-    
+    double error_ang = limit_angle(atan2(target.y - pos_rbt.y,target.x - pos_rbt.x) - ang_rbt); //initial angular error
+    double sum_error_ang = 0;
+    double prev_error_ang = error_ang;
+    double pko = 0; //proportion component, angular
+    double iko = 0; //integral component, angular
+    double dko = 0; //differential component, angular
+
     double prev_cmd_lin_vel = 0;
     double prev_cmd_ang_vel = 0;
-    double lin_acc;
-    double ang_acc;
-
-    double t1 = 0;
-    bool t01 = 0;
-    double t2 = 0;
-    bool rise_time = 0;
-    double max_overshoot = 0;
+    double akr; //Estimated acceleration in control signal at k.
+    double akr_sat; //Saturated acceleration at k.
+    double ako;
+    double ako_sat;
+    double direction;
 
     ROS_INFO(" TMOVE : ===== BEGIN =====");
 
@@ -136,73 +135,70 @@ int main(int argc, char **argv)
         {
             // update all topics
             ros::spinOnce();
-            /* if((limit_angle(ang_rbt) >= 0.1*M_PI) and (!t01))// if((target.x - pos_rbt.x <= 0.9*(target.x+2)) and (target.x - pos_rbt.x >= 0.88*(target.x+2)) and (!rise_time))
-            {
-                t1 = prev_time;
-                t01 = 1;
-            }
-            if((limit_angle(ang_rbt) >= 0.9*M_PI) and (!rise_time))  //if((target.x - pos_rbt.x <= 0.1*(target.x+2)) and (target.x - pos_rbt.x >= 0.05*(target.x+2)) and (!rise_time))
-            {
-                t2 = prev_time;
-                rise_time = 1;
-            }
-            ROS_INFO("TIME(%6.3f), T1(%6.3f), T2(%6.3f), RISE TIME(%6.3f)", prev_time, t1, t2, t2-t1);
-            if(err_ang < 0)
-            {
-                ROS_INFO("OVERSHOOT(%6.3f)", -err_ang);
-                if(-err_ang > max_overshoot)
-                {
-                    max_overshoot = -err_ang;
-                }
-            }            
-            if(pos_rbt.x > target.x)
-            {
-                ROS_INFO("OVERSHOOT(%6.3f)", pos_rbt.x-target.x);
-                if(pos_rbt.x-target.x > max_overshoot)
-                {
-                    max_overshoot = pos_rbt.x-target.x;
-                }
-            } */
+
             dt = ros::Time::now().toSec() - prev_time;
             if (dt == 0) // ros doesn't tick the time fast enough
                 continue;
             prev_time += dt;
 
             ////////////////// MOTION CONTROLLER HERE //////////////////
-            err_ang = limit_angle(atan2(target.y-pos_rbt.y,target.x-pos_rbt.x) - ang_rbt);
-            p_ang = Kp_ang*err_ang;
-            i_ang += Ki_ang*err_ang*dt;
-            d_ang = Kd_ang*(err_ang - prev_err_ang)/dt;
-            prev_err_ang = err_ang;
-            cmd_ang_vel = p_ang + i_ang + d_ang;
-            
-            err_lin = dist_euc(pos_rbt.x, pos_rbt.y, target.x, target.y);
-            p_lin = Kp_lin*err_lin;
-            i_lin += Ki_lin*err_lin*dt;
-            d_lin = Kd_lin*(err_lin - prev_err_lin)/dt;
-            cmd_lin_vel = pow(cos(err_ang/2),2)*(p_lin + i_lin + d_lin);
-            prev_err_lin = err_lin;
-           
-            sat((cmd_lin_vel - prev_cmd_lin_vel)/dt, max_lin_acc);
-            sat(prev_cmd_lin_vel + lin_acc*dt, max_lin_vel);
+            error_ang = limit_angle(atan2(target.y - pos_rbt.y,target.x - pos_rbt.x) - ang_rbt);
+            direction = 1;
+            if (error_ang > M_PI/2)
+            {
+                error_ang = error_ang - M_PI; //turning rbt towards error_ang of Pi
+                direction = -1;
+            }
+            else if (error_ang < -M_PI/2)
+            {
+                error_ang = error_ang + M_PI; //turning rbt towards error_ang of Pi
+                direction = -1;
+            }
+            sum_error_ang += error_ang;
+            pko = Kp_ang * error_ang;
+            iko = Ki_ang * sum_error_ang * dt;
+            dko = Kd_ang * (error_ang - prev_error_ang)/dt;
+            cmd_ang_vel = pko + iko + dko; 
+            prev_error_ang = error_ang;
+
+            error_lin = sqrt((target.y - pos_rbt.y)*(target.y - pos_rbt.y) + (target.x - pos_rbt.x)*(target.x - pos_rbt.x));
+            sum_error_lin += error_lin;
+            pkr = Kp_lin * error_lin;
+            ikr = Ki_lin * sum_error_lin * dt;
+            dkr = Kd_lin * (error_lin - prev_error_lin)/dt;
+            prev_error_lin = error_lin; //for my own ref, shifted from line 173
+            cmd_lin_vel = direction*cos(error_ang/2)*cos(error_ang/2)*(pkr + ikr + dkr);
+            //cmd_lin_vel = direction*cmd_lin_vel * ((M_PI-abs(error_ang))/M_PI);
+
+            akr = (cmd_lin_vel - prev_cmd_lin_vel)/dt;
+            akr_sat = sat(akr, max_lin_acc);
+            cmd_lin_vel = sat(prev_cmd_lin_vel + akr*dt, max_lin_vel);
             prev_cmd_lin_vel = cmd_lin_vel;
-            
-            sat((cmd_ang_vel - prev_cmd_ang_vel)/dt, max_ang_acc);
-            sat(prev_cmd_ang_vel + ang_acc*dt, max_ang_vel);
+
+            ako = (cmd_ang_vel - prev_cmd_ang_vel)/dt;
+            ako_sat = sat(ako, max_ang_acc);
+            cmd_ang_vel = sat(prev_cmd_ang_vel + ako*dt, max_ang_vel);
             prev_cmd_ang_vel = cmd_ang_vel;
+
+            /*if (error_ang > M_PI/2 or error_ang < -M_PI/2) //bidirection (v1.0)
+            {
+                cmd_ang_vel = -cmd_ang_vel;
+                prev_cmd_ang_vel = cmd_ang_vel;
+                cmd_lin_vel = -cmd_lin_vel;
+                prev_cmd_lin_vel = cmd_lin_vel;
+            }*/
+
             // publish speeds
             msg_cmd.linear.x = cmd_lin_vel;
-            msg_cmd.angular.z = cmd_ang_vel;
+            msg_cmd.angular.z = cmd_ang_vel; 
             pub_cmd.publish(msg_cmd);
 
             // verbose
             if (verbose)
             {
                 ROS_INFO(" TMOVE :  FV(%6.3f) AV(%6.3f)", cmd_lin_vel, cmd_ang_vel);
-                ROS_INFO("POS : x(%6.3f), y(%6.3f)", pos_rbt.x, pos_rbt.y);
-                ROS_INFO("ERR_ANG(%6.3f)", err_ang);
-                ROS_INFO("TARGET : x(%6.3f), y(%6.3f)", target.x, target.y);
-                ROS_INFO("MAX_O : (%6.3f))", max_overshoot);   
+                /*ROS_INFO(" test :  lin_vel(%6.3f) ang_vel(%6.3f, %6.3f)",
+                cmd_lin_vel, error_ang, cmd_ang_vel);*/
             }
 
             // wait for rate
